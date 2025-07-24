@@ -1,21 +1,24 @@
 from fastapi import WebSocket
-from typing import List
+from typing import Set
 
 class WebSocketManager:
     def __init__(self):
-        # Lista de conexiones WebSocket activas
-        self.active_connections: List[WebSocket] = []
+        self.connections: Set[WebSocket] = set()
 
-    # Acepta una nueva conexión WebSocket y la agrega a la lista
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.connections.add(websocket)
 
-    # Elimina una conexión cerrada
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    async def disconnect(self, websocket: WebSocket):
+        self.connections.discard(websocket)
 
-    # Envía un mensaje JSON a todos los clientes conectados
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            await connection.send_json(message)
+    async def broadcast(self, message: str):
+        dead_connections = set()
+        for ws in self.connections:
+            try:
+                await ws.send_text(message)
+            except Exception as e:
+                print("❌ Error al enviar a un cliente WS:", e)
+                dead_connections.add(ws)
+        for ws in dead_connections:
+            self.connections.discard(ws)

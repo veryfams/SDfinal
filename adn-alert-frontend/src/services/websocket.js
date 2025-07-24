@@ -1,26 +1,37 @@
 let socket;
 
-export const connectWebSocket = (onMessageCallback) => {
-  socket = new WebSocket("ws://localhost:8000/ws");
+export const connectWebSocket = (onMessage) => {
+  const wsUrl = "ws://127.0.0.1:8000/ws";
+  socket = new WebSocket(wsUrl);
 
   socket.onopen = () => {
-    console.log("🔗 WebSocket conectado al backend FastAPI.");
+    console.log("✅ WebSocket conectado con:", wsUrl);
+    // Opcional: enviar algo solo si el servidor lo espera
+    // socket.send("cliente conectado");
   };
 
   socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    onMessageCallback(data);
+    try {
+      const data = JSON.parse(event.data);
+      console.log("📩 Mensaje recibido:", data);
+      onMessage(data);
+    } catch (err) {
+      console.warn("⚠️ No se pudo parsear:", event.data);
+    }
   };
 
-  socket.onclose = () => {
-    console.log("🚫 WebSocket desconectado.");
+  socket.onerror = (err) => {
+    console.error("❌ Error en WebSocket:", err);
   };
 
-  socket.onerror = (error) => {
-    console.error("❌ Error WebSocket:", error);
+  socket.onclose = (e) => {
+    console.warn("🔌 WebSocket cerrado:", e.code, e.reason);
   };
 };
 
 export const closeWebSocket = () => {
-  if (socket) socket.close();
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.close();
+    console.log("🔒 WebSocket cerrado manualmente.");
+  }
 };
