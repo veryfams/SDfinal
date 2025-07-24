@@ -8,12 +8,25 @@ services:
     volumes:
       - ./adn-alert-frontend/src/config/mosquitto:/mosquitto/config
 
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: adn_alert_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tu_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build:
       context: ./adn-alert-backend
     container_name: backend
     depends_on:
       - mosquitto
+      - postgres
     ports:
       - "8000:8000"
 
@@ -27,3 +40,6 @@ services:
       - REACT_APP_WEBSOCKET_URL=ws://localhost:8000/ws
     stdin_open: true
     tty: true
+
+volumes:
+  postgres_data:

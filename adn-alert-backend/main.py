@@ -1,22 +1,52 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from mqtt_client import start_mqtt         # Importa el módulo que escucha alertas MQTT
-from websocket_manager import WebSocketManager  # Administra conexiones WebSocket
 
-# Crea la app FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from db import Database
+from mqtt_client import MQTTClient
+from websocket_manager import WebSocketManager
+import asyncio
+
 app = FastAPI()
-
-# Instancia un gestor de conexiones WebSocket
 ws_manager = WebSocketManager()
 
-# Inicia la suscripción al broker MQTT, pasándole el manager para reenviar mensajes
-start_mqtt(ws_manager)
+# Configuración de la base de datos (ajusta los valores según tu entorno)
+DB_CONFIG = {
+    'dbname': 'adn_alert_db',
+    'user': 'postgres',
+    'password': 'tu_password',
+    'host': 'postgres',  # Usar el nombre del servicio de docker-compose
+    'port': 5432
+}
+db = Database(**DB_CONFIG)
 
-# Ruta WebSocket donde se conectarán los clientes (React)
+# Inicializa la tabla si no existe
+from models import CREATE_TABLE_ALERTS
+db.cur.execute(CREATE_TABLE_ALERTS)
+db.conn.commit()
+
+# Configuración MQTT
+MQTT_BROKER = 'mosquitto'  # Usar el nombre del servicio de docker-compose
+MQTT_PORT = 1883
+MQTT_TOPIC = 'alertas/#'
+
+mqtt_client = MQTTClient(MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, db)
+
+def mqtt_to_ws(topic, payload, timestamp):
+    # Envía el mensaje a todos los clientes WebSocket conectados
+    msg = f"{{'topic': '{topic}', 'payload': '{payload}', 'timestamp': '{timestamp}'}}"
+    #asyncio.run(ws_manager.broadcast(msg))
+    asyncio.create_task(ws_manager.broadcast(msg))
+
+
+
+mqtt_client.set_on_message_callback(mqtt_to_ws)
+mqtt_client.start()
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await ws_manager.connect(websocket)  # Acepta y registra la conexión
+    await ws_manager.connect(websocket)
     try:
         while True:
-            await websocket.receive_text()  # Espera mensajes, aunque no se procesan
+            await websocket.receive_text()
     except WebSocketDisconnect:
-        ws_manager.disconnect(websocket)  # Quita la conexión si se desconecta el cliente
+        await ws_manager.disconnect(websocket)

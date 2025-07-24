@@ -18,4 +18,23 @@ class WebSocketManager:
     # Envía un mensaje JSON a todos los clientes conectados
     async def broadcast(self, message: dict):
         for connection in self.active_connections:
-            await connection.send_json(message)
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                print("Error enviando mensaje WS:", e)
+            #await connection.send_json(message)
+import asyncio
+
+class WebSocketManager:
+    def __init__(self):
+        self.connections = set()
+
+    async def connect(self, websocket):
+        self.connections.add(websocket)
+
+    async def disconnect(self, websocket):
+        self.connections.remove(websocket)
+
+    async def broadcast(self, message):
+        for ws in self.connections:
+            await ws.send_text(message)

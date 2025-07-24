@@ -2,3 +2,5 @@ fastapi
 uvicorn
 paho-mqtt
 python-multipart
+psycopg2-binary
+psycopg2
