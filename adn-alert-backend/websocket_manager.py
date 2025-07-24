@@ -1,40 +1,31 @@
+# websocket_manager.py
+
 from fastapi import WebSocket
-from typing import List
-
-class WebSocketManager:
-    def __init__(self):
-        # Lista de conexiones WebSocket activas
-        self.active_connections: List[WebSocket] = []
-
-    # Acepta una nueva conexión WebSocket y la agrega a la lista
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    # Elimina una conexión cerrada
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    # Envía un mensaje JSON a todos los clientes conectados
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_text(message)
-            except Exception as e:
-                print("Error enviando mensaje WS:", e)
-            #await connection.send_json(message)
+from typing import Set
 import asyncio
 
 class WebSocketManager:
     def __init__(self):
-        self.connections = set()
+        self.connections: Set[WebSocket] = set()
 
-    async def connect(self, websocket):
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
         self.connections.add(websocket)
 
-    async def disconnect(self, websocket):
-        self.connections.remove(websocket)
+    async def disconnect(self, websocket: WebSocket):
+        self.connections.discard(websocket)
 
-    async def broadcast(self, message):
+    async def broadcast(self, message: str):
+        dead_connections = set()
+
         for ws in self.connections:
-            await ws.send_text(message)
+            try:
+                await ws.send_text(message)
+            except Exception as e:
+                print("❌ Error al enviar a un cliente WS:", e)
+                dead_connections.add(ws)
+
+        # Limpieza de conexiones muertas
+        for ws in dead_connections:
+            self.connections.discard(ws)
+

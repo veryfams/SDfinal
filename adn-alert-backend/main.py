@@ -28,13 +28,18 @@ db.conn.commit()
 MQTT_BROKER = 'mosquitto'  # Usar el nombre del servicio de docker-compose
 MQTT_PORT = 1883
 MQTT_TOPIC = 'alertas/#'
+import json
+import asyncio
 
 mqtt_client = MQTTClient(MQTT_BROKER, MQTT_PORT, MQTT_TOPIC, db)
 
 def mqtt_to_ws(topic, payload, timestamp):
-    # Envía el mensaje a todos los clientes WebSocket conectados
-    msg = f"{{'topic': '{topic}', 'payload': '{payload}', 'timestamp': '{timestamp}'}}"
-    #asyncio.run(ws_manager.broadcast(msg))
+    
+    msg = json.dumps({
+        'topic': topic,
+        'payload': payload,
+        'timestamp': timestamp.isoformat()
+    })
     asyncio.create_task(ws_manager.broadcast(msg))
 
 
