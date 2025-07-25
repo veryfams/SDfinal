@@ -11,7 +11,7 @@ db = Database(
     dbname="adn_alert_db",
     user="postgres",
     password="tu_password",  # reemplaza por la real
-    host="localhost",
+    host="postgres",
     port=5432
 )
 
@@ -19,7 +19,7 @@ db = Database(
 ws_manager = WebSocketManager()
 
 # Cliente MQTT
-mqtt = MQTTClient("localhost", 1883, "alertas/general", db)
+mqtt = MQTTClient("mosquitto", 1883, "alertas/general", db)
 
 # Cada vez que llega un mensaje MQTT, se reenvía por WebSocket
 mqtt.set_on_message_callback(
