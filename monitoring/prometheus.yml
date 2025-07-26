@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Monitor de NGINX
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-lb:80']
+    metrics_path: /health
+    scrape_interval: 30s
+
+  # Monitor de backends
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend-1:8000', 'backend-2:8000', 'backend-3:8000']
+    metrics_path: /health
+    scrape_interval: 15s
+
+  # Monitor de PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-master:5432', 'postgres-replica:5432']
+    scrape_interval: 30s
+
+  # Monitor de Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Monitor de HAProxy
+  - job_name: 'haproxy'
+    static_configs:
+      - targets: ['mosquitto-sidecar:8404']
+    metrics_path: /stats
+    scrape_interval: 30s

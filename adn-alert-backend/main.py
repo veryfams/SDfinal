@@ -11,7 +11,7 @@ db = Database(
     dbname="adn_alert_db",
     user="postgres",
     password="tu_password",  # reemplaza por la real
-    host="postgres",
+    host="postgres-master",
     port=5432
 )
 
@@ -45,3 +45,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/alertas")
 def get_alertas():
     return db.get_alerts()
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy"}
