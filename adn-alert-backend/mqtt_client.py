@@ -20,6 +20,7 @@ class MQTTClient:
         print(f"[MQTT] 📥 {msg.topic}: {payload}")
         self.db.insert_alert(msg.topic, payload, timestamp)
         if self.on_message_callback:
+            print("🧪 Ejecutando callback manejar_mensaje...")
             self.on_message_callback(msg.topic, payload, timestamp)
 
     def start(self):

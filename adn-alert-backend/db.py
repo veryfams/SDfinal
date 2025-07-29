@@ -25,15 +25,19 @@ class Database:
         raise Exception("❌ No se pudo conectar a PostgreSQL después de varios intentos.")
 
     def _ensure_table(self):
-        self.cur.execute('''
-            CREATE TABLE IF NOT EXISTS alerts (
-                id SERIAL PRIMARY KEY,
-                topic VARCHAR(255) NOT NULL,
-                payload TEXT NOT NULL,
-                timestamp TIMESTAMP NOT NULL
-            );
-        ''')
-        self.conn.commit()
+        try:
+            self.cur.execute('''
+                CREATE TABLE IF NOT EXISTS alerts (
+                    id SERIAL PRIMARY KEY,
+                    topic VARCHAR(255) NOT NULL,
+                    payload TEXT NOT NULL,
+                    timestamp TIMESTAMP NOT NULL
+                );
+            ''')
+            self.conn.commit()
+        except Exception as e:
+            print(f"⚠️ Error creando tabla (posible conflicto entre instancias): {e}")
+
 
     def insert_alert(self, topic, payload, timestamp):
         self.cur.execute(
@@ -49,7 +53,47 @@ class Database:
             try:
                 row["payload"] = json.loads(row["payload"])
             except json.JSONDecodeError:
-                pass  # deja el string si no es JSON válido
+                pass
+        return rows
+
+    def get_alerts_filtered(self, region=None, tipo=None, mensaje=None, limit=None, offset=None, order="desc"):
+        query = "SELECT * FROM alerts"
+        conditions = []
+        params = []
+
+        if region:
+            conditions.append("payload::jsonb ->> 'region' = %s")
+            params.append(region)
+        if tipo:
+            conditions.append("payload::jsonb ->> 'tipo' = %s")
+            params.append(tipo)
+        if mensaje:
+            conditions.append("payload::jsonb ->> 'mensaje' ILIKE %s")
+            params.append(f"%{mensaje}%")
+
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+
+        # Validar orden (por seguridad contra inyecciones)
+        if order.lower() not in ["asc", "desc"]:
+            order = "desc"
+
+        query += f" ORDER BY timestamp {order.upper()}"
+
+        if limit:
+            query += " LIMIT %s"
+            params.append(limit)
+        if offset:
+            query += " OFFSET %s"
+            params.append(offset)
+
+        self.cur.execute(query, params)
+        rows = self.cur.fetchall()
+        for row in rows:
+            try:
+                row["payload"] = json.loads(row["payload"])
+            except json.JSONDecodeError:
+                pass
         return rows
 
     def close(self):
